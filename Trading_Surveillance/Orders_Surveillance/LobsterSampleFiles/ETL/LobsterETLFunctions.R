@@ -29,23 +29,21 @@ LobsterFileImporter =
   {
     print(paste("Importing File",files2import[i],sep = " "))
       
-          results = rbind(results,tempfileobj_parsed,LobsterMessageFileParser(wd,files2import[i],TempSymbol,TempTradeDate,TempFileLevel,TempFileType,header))
-          print("File Import\Transforms Complete")
+          results = rbind(results,LobsterMessageFileParser(wd,files2import[i],TempSymbol,TempTradeDate,TempFileLevel,TempFileType,header))
+          print("File Import\\Transforms Complete")
           
           
     }
   else if (TempFileType == 'orderbook')
   {
-    #print(paste("Importing File",files2import[i],sep = " "))
-    #print(paste("Symbol:",TempSymbol,"TradeDate:",TempTradeDate,"Type:",TempFileType,'Level:',TempFileLevel, sep =" "))
-    #print("Function no yet available")
+      #print("Function no yet available")
   }
   else print("File Type not Recognized")
    
 
      }
   
-  Print("Returning Results")
+  print("Returning Results")
   return(results)
   
   }
@@ -53,6 +51,7 @@ LobsterFileImporter =
 
 
 #############################################################################
+
 LobsterMessageFileParser = 
     function(wd,filename,TempSymbol,TempTradeDate,TempFileLevel,TempFileType, header)
     {
@@ -125,7 +124,7 @@ LobsterMessageFileParser =
       tempfileobj$EventTypeAdj = sapply(tempfileobj$Type, EventTypeTransform)
       
       print("Creatng Imported Object")
-      tempfileobj_post = data.frame(tempfileobj$Order_ID,tempfileobj$EventTypeAdj,Symbol,tempfileobj$TimeAdj,tempfileobj$DirectionAdj,tempfileobj$PriceAdj,tempfileobj$Size,tempfileobj$Initiated)
+      tempfileobj_post = data.frame(tempfileobj$Order_ID,tempfileobj$EventTypeAdj,TempSymbol,tempfileobj$TimeAdj,tempfileobj$DirectionAdj,tempfileobj$PriceAdj,tempfileobj$Size,tempfileobj$Initiated)
       print("Returning Imported File Object")
       return(tempfileobj_post)
     }
@@ -138,3 +137,6 @@ LobsterMessageFileParser =
 
 #Entry Point
 LobsterMessageFiles_Output = LobsterFileImporter(wd,message)
+
+summary(LobsterMessageFiles_Output)
+
