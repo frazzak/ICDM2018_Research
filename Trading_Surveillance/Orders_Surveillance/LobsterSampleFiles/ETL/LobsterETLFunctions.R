@@ -8,6 +8,7 @@ library("lubridate")
 wd = "~/Google Drive/Spring 2018/ICDM 2018/Trade Surveillance/LOBSTER_SampleFile/csv"
 ###
 
+#Add parallelization?
 LobsterFileImporter = 
   function(wd,type,header=FALSE)
   {
@@ -30,7 +31,7 @@ LobsterFileImporter =
     print(paste("Importing File",files2import[i],sep = " "))
       
           results = rbind(results,LobsterMessageFileParser(wd,files2import[i],TempSymbol,TempTradeDate,TempFileLevel,TempFileType,header))
-          print("File Import\\Transforms Complete")
+          print("File Import/Transforms Complete")
           
           
     }
@@ -125,6 +126,8 @@ LobsterMessageFileParser =
       
       print("Creatng Imported Object")
       tempfileobj_post = data.frame(tempfileobj$Order_ID,tempfileobj$EventTypeAdj,TempSymbol,tempfileobj$TimeAdj,tempfileobj$DirectionAdj,tempfileobj$PriceAdj,tempfileobj$Size,tempfileobj$Initiated)
+      print("Adding Reordered Headers")
+      names(tempfileobj_post) =  c('OrderID', 'EventType_Adj','Symbol','Time_Adj','Direction_Adj', 'Price_Adj', 'Size_Adj','Initiated')
       print("Returning Imported File Object")
       return(tempfileobj_post)
     }
@@ -138,5 +141,5 @@ LobsterMessageFileParser =
 #Entry Point
 LobsterMessageFiles_Output = LobsterFileImporter(wd,message)
 
-summary(LobsterMessageFiles_Output)
+#summary(LobsterMessageFiles_Output)
 
