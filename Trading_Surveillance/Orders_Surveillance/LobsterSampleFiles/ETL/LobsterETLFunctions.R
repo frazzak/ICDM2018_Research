@@ -43,7 +43,8 @@ LobsterFileImporter =
    
 
      }
-  
+  print("Updated Data Structures")
+  results$OrderID = as.factor(results$OrderID)  
   print("Returning Results")
   return(results)
   
@@ -141,5 +142,8 @@ LobsterMessageFileParser =
 #Entry Point
 LobsterMessageFiles_Output = LobsterFileImporter(wd,message)
 
-#summary(LobsterMessageFiles_Output)
+summary(LobsterMessageFiles_Output)
+
+#Update Data Structures
+LobsterMessageFiles_Output$OrderID = as.factor(LobsterMessageFiles_Output$OrderID)
 
