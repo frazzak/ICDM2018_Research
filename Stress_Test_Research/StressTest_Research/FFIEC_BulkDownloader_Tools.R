@@ -83,6 +83,7 @@ WebAPI_URLLink_Downloader = function(BHCWebAPILinks, clearfiles = TRUE, cleardir
   
       #Generate the File Requests and download file
       DownloadStatusLog = data.frame()
+#      assign(DownloadStatusLog,eniv = .GlobalEnv)
       cleardir_counter = 0 
       for(i in 1:nrow(BHCWebAPILinks))
       {
@@ -107,8 +108,22 @@ WebAPI_URLLink_Downloader = function(BHCWebAPILinks, clearfiles = TRUE, cleardir
         
         #Download the Files
         print(paste0("Attempting to Download File: ", tempobj[["ReportDownload"]], tempobj[["downloadpath"]]))
-        download.file(tempobj[["ReportDownload"]], tempdownloadfilepath )   
-        
+#        download.file(tempobj[["ReportDownload"]], tempdownloadfilepath, quiet = TRUE )   
+        tryCatch({download.file(tempobj[["ReportDownload"]], tempdownloadfilepath, quiet = FALSE ) }, error=function(err) { warning("file could not be downloaded") 
+          
+          print(paste0("FAILED to Download File: ", tempobj[["ReportDownload"]], " to ", tempdownloadfilepath))
+          
+          resultobj = data.frame(RSSD_ID = as.character(tempobj$RSSD_ID), 
+                                 ReportType = as.character(tempobj$ReportType),
+                                 ReportDate = as.character(tempobj$ReportDate),
+                                 ReportFilename = as.character(tempobj$filename),
+                                 DownloadFilePath =  as.character(tempdownloadfilepath), 
+                                 Status = "FAILED - 404") 
+          
+          DownloadStatusLog = rbind(DownloadStatusLog, resultobj)
+          
+          
+          })
         if (!file.exists(tempdownloadfilepath)) {
           print(paste0("FAILED to Download File: ", tempobj[["ReportDownload"]], " to ", tempdownloadfilepath))
           
@@ -212,6 +227,8 @@ BHC_Meta_Data_List_Generator = function (base_site, dates = NULL) {
 base_site = "https://www.ffiec.gov/nicpubweb/nicweb/HCSGreaterThan10B.aspx"
 
 topBHC = BHC_Meta_Data_List_Generator(base_site)
+
+
 
 #Download reports per RSSD and Date.
 RSSD_IDs = topBHC$RSSD_ID
