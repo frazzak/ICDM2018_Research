@@ -1,6 +1,11 @@
 #Generic Functions to pull data from FFEIC
 #Library Dependencies
 
+if (!require("dplyr")) {
+  install.packages("dplyr")
+}
+library("dplyr")
+
 if (!require("stringr")) {
   install.packages("stringr")
 }
@@ -155,13 +160,7 @@ WebAPI_URLLink_Downloader = function(BHCWebAPILinks, clearfiles = TRUE, cleardir
     
   }
 
-
-
-
 #BHC List Generator
-
-
-
 
 BHC_Meta_Data_List_Generator = function (base_site, dates = NULL) {
 
@@ -220,10 +219,69 @@ BHC_Meta_Data_List_Generator = function (base_site, dates = NULL) {
     return(topBHC)   
 }
     
+#Create Folder Creation Structure.
+File_Folder_Organizer = function(downloadlogobj, sourcedir,destdir = "../FFIEC_Reports/", remove = TRUE, copy = TRUE)
+  {
+
+  if(remove){
+    print(paste0("Deleting All Existing Directories: ",destdir))
+    if (length(list.dirs(destdir)) > 0) unlink(destdir,recursive = TRUE)
+       }
+    #create dir if doesnt exist
+  
+  if(!dir.exists(destdir)){
+    print(paste0("Creating Destination Directory:",destdir))
+    dir.create(destdir)
+    }
+  print(paste0("Changing Working Directory to:",destdir))
+  setwd(destdir)
+
+  #Directory Creation based on Institution Name_RSSD, Report Name, Report Date, Report Type 
+  
+  #For files that are OK in Log and exisit
+  tempcopyobjlog = filter(downloadlogobj, Status == 'OK') 
+  print(paste0("Preparing to copy ",nrow(tempcopyobjlog),' files.'))
+  for(i in 1:nrow(tempcopyobjlog))
+  {
+  #Check if file exists
+  print(paste0("Checking if file exists: ",tempcopyobjlog$DownloadFilePath[i]))    
+    if(file.exists(as.character(tempcopyobjlog$DownloadFilePath[i]))){
+  
+    #Check InstitutionName Dir and create
+    
+    tempinstrssd = paste0(getwd(),'/',tempcopyobjlog$Institution_Name[i],'| ',tempcopyobjlog$RSSD_ID[i])
+    tempreportdir = paste0(tempinstrssd,'/',tempcopyobjlog$ReportType[i])
+    #tempreportdate = paste0(tempreportdir,'/',as.character(tempcopyobjlog$ReportDate.y)[i])
+    print(paste0("Checking directory path: ",tempreportdir))  
+    if(!isTRUE(file.info(tempreportdir)$isdir)){dir.create(tempreportdir, recursive=TRUE)}
+    if(copy){
+            print(paste0("Copying File to directory path"))
+            file.copy(as.character(tempcopyobjlog$DownloadFilePath[i]),tempreportdir, overwrite = TRUE)
+    } 
+    if(!copy)
+    {
+                    print(paste0("Moving File to directory path"))
+                    file.rename(from = as.character(tempcopyobjlog$DownloadFilePath[i]),  
+                                to = paste0(tempreportdir,'/',tempcopyobjlog$ReportFilename[i]))
+    }              
+                    
+    } else 
+      print("File Does not Exist")
+        }
+        print(paste0("File organization Complete"))
+  
+      }
+      
+  
+  
+
+
 #Entry Point
 
-
+setwd("/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research")
 #Website Base
+
+
 base_site = "https://www.ffiec.gov/nicpubweb/nicweb/HCSGreaterThan10B.aspx"
 
 topBHC = BHC_Meta_Data_List_Generator(base_site)
@@ -231,18 +289,34 @@ topBHC = BHC_Meta_Data_List_Generator(base_site)
 
 
 #Download reports per RSSD and Date.
-RSSD_IDs = topBHC$RSSD_ID
+RSSD_IDs = topBHC$RSSD_ID[1]
 ReportDates = c("20171231","20161231","20151231")
 ReportTypes = c("BHCPR","FRY9C","FRY9LP","FRY15","FFIEC101","FFIEC102")
+
+# TODO: Parameterize the directory creation
 downloadpath = paste0(getwd(),"/raw_pdf/" )  
 dir.create(file.path(downloadpath))
 
 BHCWebAPILinks = FFIEC_BHC_WebAPI_UrlCreator(RSSD_IDs,ReportDates,ReportTypes,downloadpath)
-View(head(BHCWebAPILinks))
 
 
 DownloadBHCLog = WebAPI_URLLink_Downloader(BHCWebAPILinks)
-View(DownloadBHCLog)
+
+
+
+#Join on RSSD_ID Institute names
+# TODO: Enhance Functions to handle the TopBHC and attach to object or merge.
+DownloadBHCLog_a = merge(topBHC,DownloadBHCLog, by = "RSSD_ID")
+
+
+#Put files into directories.
+File_Folder_Organizer(DownloadBHCLog_a, paste0(getwd(),"/raw_pdf/"),
+                  destdir = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/FFIEC_Reports/", remove = TRUE,copy = FALSE)
+
+
+#TODO: Convert files into readable tables
+#TODO: Store data into databases and dataframes.
+#TODO: Analyze data with respect to CCAR and Stress Tests
 
 
 
