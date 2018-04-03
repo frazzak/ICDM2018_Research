@@ -80,7 +80,8 @@ FFIEC_BHC_WebAPI_UrlCreator = function(RSSD_IDs,ReportDates,ReportTypes,download
 }  
 
   #WebAPI Url Link Downloader
-WebAPI_URLLink_Downloader = function(BHCWebAPILinks, clearfiles = TRUE, cleardir = TRUE){
+WebAPI_URLLink_Downloader = function(BHCWebAPILinks, clearfiles = FALSE, cleardir = FALSE)
+  {
 
 
   
@@ -104,9 +105,10 @@ WebAPI_URLLink_Downloader = function(BHCWebAPILinks, clearfiles = TRUE, cleardir
         else
         if(clearfiles){
          print(paste0("Deleting if Exists: ",tempdownloadfilepath))
-          if (file.exists(tempdownloadfilepath)) file.remove(tempdownloadfilepath)
+          if (file.exists(tempdownloadfilepath))
+            {
+            file.remove(tempdownloadfilepath)
           
-        }
         
          print(paste0("Generating File Request to FFIEC for:", tempobj$RSSD_ID, " ", tempobj$ReportType, " ", tempobj$ReportDate  ))
         GenerateFileRequest = GET(tempobj[["ReportAPILink_Redirect"]])
@@ -129,6 +131,8 @@ WebAPI_URLLink_Downloader = function(BHCWebAPILinks, clearfiles = TRUE, cleardir
           
           
           })
+        }
+        
         if (!file.exists(tempdownloadfilepath)) {
           print(paste0("FAILED to Download File: ", tempobj[["ReportDownload"]], " to ", tempdownloadfilepath))
           
@@ -138,13 +142,23 @@ WebAPI_URLLink_Downloader = function(BHCWebAPILinks, clearfiles = TRUE, cleardir
                                    ReportFilename = as.character(tempobj$filename),
                                    DownloadFilePath =  as.character(tempdownloadfilepath), 
                                    Status = "FAILED") 
-  
+        }
+          }
+        else{
+          print(paste0("SKIPPED File: ",tempdownloadfilepath))
+          resultobj = data.frame(RSSD_ID = as.character(tempobj$RSSD_ID), 
+                                 ReportType = as.character(tempobj$ReportType),
+                                 ReportDate = as.character(tempobj$ReportDate),
+                                 ReportFilename = as.character(tempobj$filename),
+                                 DownloadFilePath =  as.character(tempdownloadfilepath), 
+                                 Status = "Skipped-Exists") 
+        
           DownloadStatusLog = rbind(DownloadStatusLog, resultobj)
-          
+        }  
           #setInternet2(TRUE)
           #download.file(fileURL ,destfile,method="auto") }
           #load("./data/samsungData.rda")
-        } 
+        
         resultobj = data.frame(RSSD_ID = as.character(tempobj$RSSD_ID), 
                                   ReportType = as.character(tempobj$ReportType),
                                   ReportDate = as.character(tempobj$ReportDate),
@@ -163,64 +177,113 @@ WebAPI_URLLink_Downloader = function(BHCWebAPILinks, clearfiles = TRUE, cleardir
 #BHC List Generator
 
 BHC_Meta_Data_List_Generator = function (base_site, dates = NULL) {
-
+    #Get list of dates so we can get all BHCs for different dates to create reference BHC table.
+    
+    #Loop through Dates Vector and generate request\response
+    topBHC  = data.frame()
     #Read base site
     webpage = read_html(base_site)
     
+    #Collect hidden attributes
+    hidden = setNames(
+      html_nodes(webpage, "input[type='hidden']") %>% html_attr("value"),
+      html_nodes(webpage, "input[type='hidden']") %>% html_attr("name")
+    ) 
+    if(is.null(dates)){ dates = 1}
+      
+    for(i in 1:length(dates))
+      {
+      
+     
+      if(dates[i]=='20171231' || dates[i] == 1 ){
+        tempwebpage_obj = webpage
+        tmptbl <- tempwebpage_obj %>%
+          html_nodes("#dgTop50") %>%
+          html_table(fill = TRUE) %>%
+          .[[1]]
+        } else {
+      #Post with hidden attributes , generate a request
+      requestpost = 
+        POST(
+          url = base_site, 
+          add_headers(
+            Origin = "https://www.rutgers.edu", 
+            `User-Agent` = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.52 Safari/537.36", 
+            Referer = base_site
+          ), 
+          body = list(
+            `__EVENTTARGET` = "", 
+            `__EVENTARGUMENT` = "", 
+            `__VIEWSTATE` = hidden["__VIEWSTATE"],
+            `__VIEWSTATEGENERATOR` = hidden["__VIEWSTATEGENERATOR"],
+            `__EVENTVALIDATION` = hidden["__EVENTVALIDATION"],
+            DateDropDown = dates[i]
+          ), 
+          encode = "form"
+        )  
+      #Store response as parsed content
+      tempwebpage_obj = content(requestpost, as="parsed")
+      #Parse Table
+      tryCatch({tmptbl = tempwebpage_obj %>%
+        html_nodes("#dgTop50") %>%
+        html_table(fill = TRUE) %>%
+        .[[1]]}, error=function(err) { warning(paste0("Could not Parse Table for :",dates[i]))})
+        }
+       
+      #Check if Date of page matches with iterated date
+      select =  tempwebpage_obj %>%
+        html_nodes("option") %>%
+        html_attr("value") 
+      selected_idx =  tempwebpage_obj %>%
+        html_nodes("option") %>%
+        html_attr("selected") 
+      selval = select[which(selected_idx == "selected")]
+      
+      if(dates[i] != selval ){
+        print(paste0("Iterated Date:",dates[i], " does not MATCH website date:",selval))
+      }
+      
+      
+      
+      #Combine iterated tables for later combination.
+      temptopBHC = as.data.frame(tmptbl)
+      
+      #Column Transformations
+      temptopBHC$Rank = as.factor(temptopBHC$Rank)
+      temptopBHC$Location = as.factor(temptopBHC$Location)
+      temptopBHC$RSSD_ID = as.factor(
+        gsub("[\\(\\)]", "", regmatches(temptopBHC$`Institution Name (RSSD ID)`, gregexpr("\\(.[0-9]*?\\)", temptopBHC$`Institution Name (RSSD ID)`))))
+      temptopBHC$Institution_Name = as.factor(
+        gsub("\\(.[0-9]*?\\)", "", temptopBHC$`Institution Name (RSSD ID)`)
+      )
+      #Need to remove trailing spaces.
+      #sub("\\s+$", "", x)
+      
+      #Remove the original column
+      temptopBHC$`Institution Name (RSSD ID)` = NULL
+      
+      #Generate Date Column
+      temptopBHC$ReportDate = as.Date(rep(strsplit(names(temptopBHC)[3]," ")[[1]][1], times = nrow(temptopBHC)), format = '%m/%d/%Y')
+      
+      
+      #Update Column Names
+      names(temptopBHC)[3] = 'Total_Assets'
+      
+      #Update Total Assets Column
+      temptopBHC$Total_Assets = as.numeric(str_replace_all(temptopBHC$Total_Assets, "[^[:alnum:]]", ""))
+      topBHC = rbind(topBHC,temptopBHC)
+      temptopBHC = NULL
+      tempwebpage_tbl = NULL
+      tmptbl = NULL
+    }
     
-    #Get list of dates so we can get all BHCs for different dates to create reference BHC table.
     
-    
-    
-    select =  webpage %>%
-      html_nodes("option") %>%
-      html_attr("value") 
-    selected_idx =  webpage %>%
-      html_nodes("option") %>%
-      html_attr("selected") 
-    
-    selected_val = select[which(selected_idx == "selected")]
-    
-    
-    #Get Tables for to walk through all BHCs
-    #tbls = html_nodes(webpage, "table")
-    
-    tbls_ls <- webpage %>%
-      html_nodes("#dgTop50") %>%
-      html_table(fill = TRUE) %>%
-      .[[1]]
-    
-    topBHC = as.data.frame(tbls_ls)
-    
-    #Column Transformations
-    topBHC$Rank = as.factor(topBHC$Rank)
-    topBHC$Location = as.factor(topBHC$Location)
-    topBHC$RSSD_ID = as.factor(
-      gsub("[\\(\\)]", "", regmatches(topBHC$`Institution Name (RSSD ID)`, gregexpr("\\(.[0-9]*?\\)", topBHC$`Institution Name (RSSD ID)`))))
-    topBHC$Institution_Name = as.factor(
-      gsub("\\(.[0-9]*?\\)", "", topBHC$`Institution Name (RSSD ID)`)
-    )
-    #Need to remove trailing spaces.
-    #sub("\\s+$", "", x)
-    
-    #Remove the original column
-    topBHC$`Institution Name (RSSD ID)` = NULL
-    
-    #Generate Date Column
-    topBHC$ReportDate = as.Date(rep(strsplit(names(topBHC)[3]," ")[[1]][1], times = nrow(topBHC)), format = '%m/%d/%Y')
-    
-
-    #Update Column Names
-    names(topBHC)[3] = 'Total_Assets'
-    
-    #Update Total Assets Column
-    topBHC$Total_Assets = as.numeric(str_replace_all(topBHC$Total_Assets, "[^[:alnum:]]", ""))
- 
+      
     return(topBHC)   
 }
     
 #Create Folder Creation Structure.
-File_Folder_Organizer = function(downloadlogobj, sourcedir,destdir = "../FFIEC_Reports/", remove = TRUE, copy = TRUE)
+File_Folder_Organizer = function(downloadlogobj, sourcedir, destdir , remove = TRUE, copy = TRUE)
   {
 
   if(remove){
@@ -234,7 +297,7 @@ File_Folder_Organizer = function(downloadlogobj, sourcedir,destdir = "../FFIEC_R
     dir.create(destdir)
     }
   print(paste0("Changing Working Directory to:",destdir))
-  setwd(destdir)
+  
 
   #Directory Creation based on Institution Name_RSSD, Report Name, Report Date, Report Type 
   
@@ -245,56 +308,55 @@ File_Folder_Organizer = function(downloadlogobj, sourcedir,destdir = "../FFIEC_R
   {
   #Check if file exists
   print(paste0("Checking if file exists: ",tempcopyobjlog$DownloadFilePath[i]))    
-    if(file.exists(as.character(tempcopyobjlog$DownloadFilePath[i]))){
+    if(file.exists(as.character(tempcopyobjlog$DownloadFilePath[i])))
+      {
   
     #Check InstitutionName Dir and create
     
-    tempinstrssd = paste0(getwd(),'/',tempcopyobjlog$Institution_Name[i],'| ',tempcopyobjlog$RSSD_ID[i])
+    tempinstrssd = paste0(destdir,tempcopyobjlog$Institution_Name[i],'| ',tempcopyobjlog$RSSD_ID[i])
     tempreportdir = paste0(tempinstrssd,'/',tempcopyobjlog$ReportType[i])
     #tempreportdate = paste0(tempreportdir,'/',as.character(tempcopyobjlog$ReportDate.y)[i])
     print(paste0("Checking directory path: ",tempreportdir))  
-    if(!isTRUE(file.info(tempreportdir)$isdir)){dir.create(tempreportdir, recursive=TRUE)}
-    if(copy){
-            print(paste0("Copying File to directory path"))
-            file.copy(as.character(tempcopyobjlog$DownloadFilePath[i]),tempreportdir, overwrite = TRUE)
-    } 
-    if(!copy)
-    {
+      if(!isTRUE(file.info(tempreportdir)$isdir)){dir.create(tempreportdir, recursive=TRUE)}
+          if(copy){
+                          print(paste0("Copying File to directory path"))
+                          file.copy(as.character(tempcopyobjlog$DownloadFilePath[i]),
+                                    tempreportdir, overwrite = TRUE)
+                  } 
+          if(!copy)
+                 {
                     print(paste0("Moving File to directory path"))
                     file.rename(from = as.character(tempcopyobjlog$DownloadFilePath[i]),  
                                 to = paste0(tempreportdir,'/',tempcopyobjlog$ReportFilename[i]))
-    }              
+                  }              
                     
-    } else 
-      print("File Does not Exist")
-        }
-        print(paste0("File organization Complete"))
+          } else {print("File Does not Exist")}
+        
+      }
+        
+          print(paste0("File organization Complete"))
   
       }
       
-  
-  
-
-
 #Entry Point
+  
+#Variables
+destdir = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/FFIEC_Reports/"
+basedir = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/"
+rawdatadir = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/raw_pdf/"
+ReportDates = c("20171231","20161231","20151231","20141231","20131231","20121231")
+ReportTypes = c("BHCPR","FRY9C","FRY9LP","FRY15","FFIEC101","FFIEC102")
 
 setwd("/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research")
 #Website Base
-
-
 base_site = "https://www.ffiec.gov/nicpubweb/nicweb/HCSGreaterThan10B.aspx"
 
-topBHC = BHC_Meta_Data_List_Generator(base_site)
-
-
-
+topBHC = BHC_Meta_Data_List_Generator(base_site,ReportDates)
 #Download reports per RSSD and Date.
-RSSD_IDs = topBHC$RSSD_ID[1]
-ReportDates = c("20171231","20161231","20151231")
-ReportTypes = c("BHCPR","FRY9C","FRY9LP","FRY15","FFIEC101","FFIEC102")
+RSSD_IDs = unique(topBHC$RSSD_ID)
+#unique(rawresults[,c("RSSD_ID","Institution_Name")]))
 
-# TODO: Parameterize the directory creation
-downloadpath = paste0(getwd(),"/raw_pdf/" )  
+downloadpath = rawdatadir
 dir.create(file.path(downloadpath))
 
 BHCWebAPILinks = FFIEC_BHC_WebAPI_UrlCreator(RSSD_IDs,ReportDates,ReportTypes,downloadpath)
@@ -302,21 +364,24 @@ BHCWebAPILinks = FFIEC_BHC_WebAPI_UrlCreator(RSSD_IDs,ReportDates,ReportTypes,do
 
 DownloadBHCLog = WebAPI_URLLink_Downloader(BHCWebAPILinks)
 
-
-
 #Join on RSSD_ID Institute names
 # TODO: Enhance Functions to handle the TopBHC and attach to object or merge.
-DownloadBHCLog_a = merge(topBHC,DownloadBHCLog, by = "RSSD_ID")
+DownloadBHCLog_a = merge(unique(topBHC[,c("RSSD_ID","Institution_Name","Location")]),DownloadBHCLog, by = "RSSD_ID")
 
+#FIX bad dir from improper working dir
+#DownloadBHCLog_a$DownloadFilePath = gsub('/FFIEC_Reports/','/',DownloadBHCLog_a$DownloadFilePath)
 
 #Put files into directories.
-File_Folder_Organizer(DownloadBHCLog_a, paste0(getwd(),"/raw_pdf/"),
-                  destdir = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/FFIEC_Reports/", remove = TRUE,copy = FALSE)
-
+#Make sure that the destination for donwload is accurate from the log.
+File_Folder_Organizer(DownloadBHCLog_a, sourcedir = rawdatadir,
+                  destdir = destdir, remove = TRUE,copy = FALSE)
 
 #TODO: Convert files into readable tables
 #TODO: Store data into databases and dataframes.
 #TODO: Analyze data with respect to CCAR and Stress Tests
+
+
+
 
 
 
