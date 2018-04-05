@@ -8,132 +8,114 @@ Created on Tue Apr  3 23:22:36 2018
 
 #Libraries
 
-import sys,os
-#import tabula
-#import os
-import pandas as pd
+import sys,os, subprocess, shutil
+#import pandas as pd
 
-import applescript
+#Integrate to R script which generates API requests for reports from FFIEC website to attain raw files.
+#Integrate into one python module wrapper
+#import rpy2
+
+
+
+#Integrate applescript that will convert raw Secured PDFs and export them using Preview.app to unsecure them in prepreation for tabula conversion
+#import applescript #Not working due to some issues in the Foundation Module and pyobjc issues
+#import appscript
+
+#Tabula python wrapper to integrate into python rather than do system calls to jar file which is successful at the moment.
+import tabula
+
 #PDF Security Restriction removal via Preview Export.
+#Will Only Run on MAC with Desktop and Preview APP
 
+def ExportAsPDF_Preview(homepath, basepath, sourcefolder, tempfolder, destfolder, script_path = '/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/BHC_PDF_Parser/PreviewPDFConverter.scpt', deletesource = False):
 
+    
+    try:
+        print("Converting Secured PDF with Preview.app Export as PDF Feature")    
+        proc_out = subprocess.Popen(['osascript', script_path, basepath, sourcefolder, destfolder, tempfolder],
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
+                                universal_newlines=True
+                                ).communicate()[0]
+    except Exception as e:
+        print(e)
+    
+    
+    if deletesource:
+        print ("Deleting Files in Source Folder")
+        folder = os.path.join(basepath,sourcefolder)
+        for the_file in os.listdir(folder):
+            file_path = os.path.join(folder, the_file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+            except Exception as a:
+                print(a)        
+                
+    
+    return("Export to PDF with Preview.app Completed")
 
-script_text = '''
---set volume with output muted--
-tell application "Finder"
-	--set theSelection to selection as alias list--
-	
-	set basefolderpath to POSIX path of ("/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/BHC_PDF_Parser/")
-	
-	
-	
-	
-	
-	--if not (exists basefolderpath & "pdf" as POSIX file) then--
-	--	log basefolderpath--
-	--	log basefolderpath & "pdf"--
-	--	log "basefolderpath folder does not  exists"--
-	--	make new folder at basefolderpath with properties {name:"pdf"}--
-	--end if--
-	
-	if not (exists basefolderpath & "preview_converted_pdf" as POSIX file) then
-		log basefolderpath
-		log basefolderpath & "preview_converted_pdf"
-		log "preview_converted_pdf folder does not  exists"
-		make new folder at basefolderpath as POSIX file with properties {name:"preview_converted_pdf"}
-		
-		
-		
-		
-	end if
-	
-	set theSourceFolder to basefolderpath & "pdf" as POSIX file
-	set theDestinationFolder to basefolderpath & "preview_converted_pdf" as POSIX file
-	set theDesktop to "/Users/phn1x/Desktop" as POSIX file
-	set theSelection to files of folder theSourceFolder as alias list
-end tell
+#Tabula Conversion PDF to CSV
+#How to get Tabula Dataframe from PDF
+   #test = tabula.read_pdf(paths[2], pages = 'all', guess = True, multiple_tables = True)
 
-
-tell application "Preview"
-	
-	launch
-	
-	activate
-	
-	repeat with thisFile in theSelection
-		--log thisFile--
-		set theDocument to open thisFile
-		
-		tell application "System Events" to tell process "Preview"
-			
-			click menu item "Export as PDF…" of menu 1 of menu bar item "File" of menu bar 1
-			
-			repeat until sheet 1 of window 1 exists
-				
-			end repeat
-			
-			keystroke "d" using {command down}
-			
-			keystroke return
-			
-			delay 0.25
-			
-			if (button "Replace" of sheet 1 of sheet 1 of window 1) exists then
-				
-				click button "Replace" of sheet 1 of sheet 1 of window 1
-				
-			end if
-			
-			repeat until enabled of menu item 1 of menu 1 of menu bar item 2 of menu bar 1
-				
-			end repeat
-			
-			
-			click menu item "Close Window" of menu 1 of menu bar item "File" of menu bar 1
-			
-			
-		end tell
-		
-		tell application "Finder"
-			set filename to (theDesktop as text) & ":" & (name of thisFile as text) & ".pdf"
-			--log filename--
-			move file filename to theDestinationFolder with replacing
-		end tell
-		
-	end repeat
-	
-	
-	tell application "Preview"
-		quit
-	end tell
-	
-end tell
-
-'''
+def Tabula_UnsecurePDF_Convert(unsecuredpdfpath, outputfolder, output_format = "csv", pages = 'all',guess = True, fileextension = ('.pdf','.PDF'), deletesource = False):     
+#Stream lined way to import tables into python environment for parsing    
+    paths = [ os.path.join(unsecuredpdfpath,fn) for fn in os.listdir(unsecuredpdfpath) if fn.endswith(fileextension)]
+    for i in range(0,len(paths)):
+        try: 
+            print("Converting File:" + paths[i])
+            tabula.convert_into(paths[i],os.path.join(outputfolder,os.path.splitext(os.path.basename(paths[i]))[0] + ".csv"), output_format = "csv", guess = True, multiple_tables = True, pages = 'all')
+            print("Successfully Converted:" + paths[i] + "Output:" + os.path.join(outputfolder,os.path.splitext(os.path.basename(paths[i]))[0] + ".csv"))
+        except Exception as a:
+            print(a)        
+            
+    
+    if deletesource:
+        print ("Deleting Files in Source Folder")
+        
+        for the_file in os.listdir(unsecuredpdfpath):
+            file_path = os.path.join(unsecuredpdfpath, the_file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+            except Exception as a:
+                print(a)      
+    
+    return("Tabula PDF to File conversion completed")   
 
 
 
 
 
-#Tabula Conversion 
-#Variables
-pdf_sourcedir = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/BHC_PDF_Parser/preview_converted_pdf/"
-csv_folder = '../out/'
-base_command = 'java -jar ../tabula/tabula-1.0.1-jar-with-dependencies.jar -p all -f CSV -g -d -o {} {}'
+
+def main():
+
+    #Variables
+    
+    #Manual way to convert to csv
+    #paths = [folder + fn for fn in os.listdir(folder) if fn.endswith(('.pdf','.PDF'))]
+    #tabula_jarpath = os.path.join(basepath,'/tabula/tabula-1.0.1-jar-with-dependencies.jar')
+    #base_command = 'java -jar ' + tabula_jarpath + ' -p all -f CSV -g -d -o {} {}'
+    #Variables
+    homepath = os.environ['HOME']
+    basepath = os.path.join(homepath,'ICDM_Research/Stress_Test_Research/StressTest_Research/BHC_PDF_Parser/')
+    sourcefolder = "pdf"
+    tabulaoutput = os.path.join(basepath,"out")
+    #Currently has to be Desktop since we are using Desktop shortcut in Preiview.app
+    tempfolder = os.path.join(homepath,"Desktop")
+    destfolder = "preview_converted_pdf"
+    script_path= os.path.join(basepath,"PreviewPDFConverter.scpt")
+    
+    #Call Preview.app Converstion
+    ExportAsPDF_Preview(homepath, basepath, sourcefolder, tempfolder, destfolder, script_path, deletesource = False)
+
+    #Call for Tabula to convert PDFs to CSV for data manipulation and analysis.
+    Tabula_UnsecurePDF_Convert(unsecuredpdfpath = os.path.join(basepath,destfolder), outputfolder = tabulaoutput)  
 
 
-
-#set working dir
-os.chdir(pdf_sourcedir)
-os.getcwd()
-os.listdir()
-
-
-#paths = [folder + fn for fn in os.listdir(folder) if fn.endswith(('.pdf','.PDF'))]
-
-
-for filename in os.listdir(pdf_sourcedir):
-    pdf_path = os.path.join(pdf_sourcedir, filename)
-    csv_path = os.path.join(csv_folder, filename.replace('.pdf', '.csv'))
-    command = base_command.format(csv_path, pdf_path)
-    os.system(command)
+if __name__ == "__main__": main()
+        
+    
