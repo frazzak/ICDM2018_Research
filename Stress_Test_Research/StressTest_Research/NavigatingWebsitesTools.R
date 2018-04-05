@@ -71,7 +71,7 @@ library(rvest)
 base_site = "https://www.ffiec.gov/nicpubweb/nicweb/HCSGreaterThan10B.aspx"
 
 #Read in the base page
-pre_pg <- read_html("https://www.ffiec.gov/nicpubweb/nicweb/HCSGreaterThan10B.aspx")
+pre_pg <- read_html(base_site)
 
 #Collect hidden attributes
 hidden = setNames(
@@ -93,13 +93,13 @@ resquestpost =
               `__EVENTARGUMENT` = "", 
               `__VIEWSTATE` = hidden["__VIEWSTATE"],
               `__VIEWSTATEGENERATOR` = hidden["__VIEWSTATEGENERATOR"],
-              `__EVENTVALIDATION` = hidden["__EVENTVALIDATION"],
-              DateDropDown = '20150930'
+              `__EVENTVALIDATION` = hidden["__EVENTVALIDATION"]#,
+              DateDropDown = '20171231'
             ), 
             encode = "form"
           ) 
     #Store response as parsed content
-    pg = content(res,as="parsed")
+    pg = content(resquestpost,as="parsed")
     #Parse Table
     pg %>%
       html_nodes("#dgTop50") %>%
@@ -117,8 +117,8 @@ resquestpost =
 #base_session = html_session(base_site)
 #form_session = html_form(session)[[1]]
 #setvalues = set_values(form_session, 
-                       "DateDropDown" = '20150930'
-                       )
+#                       "DateDropDown" = '20150930'
+#                       )
 #Does not work since it is aspx
 #submit_form(session = base_session, form = setvalues, POST = base_site)
 

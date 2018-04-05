@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Apr  3 23:22:36 2018
+
+@author: phn1x
+"""
+
+#Libraries
+
+import sys,os
+#import tabula
+#import os
+import pandas as pd
+
+import applescript
+#PDF Security Restriction removal via Preview Export.
+
+
+
+script_text = '''
+--set volume with output muted--
+tell application "Finder"
+	--set theSelection to selection as alias list--
+	
+	set basefolderpath to POSIX path of ("/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/BHC_PDF_Parser/")
+	
+	
+	
+	
+	
+	--if not (exists basefolderpath & "pdf" as POSIX file) then--
+	--	log basefolderpath--
+	--	log basefolderpath & "pdf"--
+	--	log "basefolderpath folder does not  exists"--
+	--	make new folder at basefolderpath with properties {name:"pdf"}--
+	--end if--
+	
+	if not (exists basefolderpath & "preview_converted_pdf" as POSIX file) then
+		log basefolderpath
+		log basefolderpath & "preview_converted_pdf"
+		log "preview_converted_pdf folder does not  exists"
+		make new folder at basefolderpath as POSIX file with properties {name:"preview_converted_pdf"}
+		
+		
+		
+		
+	end if
+	
+	set theSourceFolder to basefolderpath & "pdf" as POSIX file
+	set theDestinationFolder to basefolderpath & "preview_converted_pdf" as POSIX file
+	set theDesktop to "/Users/phn1x/Desktop" as POSIX file
+	set theSelection to files of folder theSourceFolder as alias list
+end tell
+
+
+tell application "Preview"
+	
+	launch
+	
+	activate
+	
+	repeat with thisFile in theSelection
+		--log thisFile--
+		set theDocument to open thisFile
+		
+		tell application "System Events" to tell process "Preview"
+			
+			click menu item "Export as PDF…" of menu 1 of menu bar item "File" of menu bar 1
+			
+			repeat until sheet 1 of window 1 exists
+				
+			end repeat
+			
+			keystroke "d" using {command down}
+			
+			keystroke return
+			
+			delay 0.25
+			
+			if (button "Replace" of sheet 1 of sheet 1 of window 1) exists then
+				
+				click button "Replace" of sheet 1 of sheet 1 of window 1
+				
+			end if
+			
+			repeat until enabled of menu item 1 of menu 1 of menu bar item 2 of menu bar 1
+				
+			end repeat
+			
+			
+			click menu item "Close Window" of menu 1 of menu bar item "File" of menu bar 1
+			
+			
+		end tell
+		
+		tell application "Finder"
+			set filename to (theDesktop as text) & ":" & (name of thisFile as text) & ".pdf"
+			--log filename--
+			move file filename to theDestinationFolder with replacing
+		end tell
+		
+	end repeat
+	
+	
+	tell application "Preview"
+		quit
+	end tell
+	
+end tell
+
+'''
+
+
+
+
+
+#Tabula Conversion 
+#Variables
+pdf_sourcedir = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/BHC_PDF_Parser/preview_converted_pdf/"
+csv_folder = '../out/'
+base_command = 'java -jar ../tabula/tabula-1.0.1-jar-with-dependencies.jar -p all -f CSV -g -d -o {} {}'
+
+
+
+#set working dir
+os.chdir(pdf_sourcedir)
+os.getcwd()
+os.listdir()
+
+
+#paths = [folder + fn for fn in os.listdir(folder) if fn.endswith(('.pdf','.PDF'))]
+
+
+for filename in os.listdir(pdf_sourcedir):
+    pdf_path = os.path.join(pdf_sourcedir, filename)
+    csv_path = os.path.join(csv_folder, filename.replace('.pdf', '.csv'))
+    command = base_command.format(csv_path, pdf_path)
+    os.system(command)
