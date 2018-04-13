@@ -8,10 +8,10 @@ Created on Tue Apr  3 23:22:36 2018
 
 #Libraries
 
-import sys,os, subprocess, shutil
+import sys,os, subprocess
 #import pandas as pd
 
-#Integrate to R script which generates API requests for reports from FFIEC website to attain raw files.
+#TODO:Integrate to R script which generates API requests for reports from FFIEC website to attain raw files.
 #Integrate into one python module wrapper
 #import rpy2
 
@@ -36,7 +36,8 @@ def ExportAsPDF_Preview(homepath, basepath, sourcefolder, tempfolder, destfolder
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
                                 universal_newlines=True
-                                ).communicate()[0]
+                                ).communicate()
+        #print(proc_out.communicate()[0])
     except Exception as e:
         print(e)
     
@@ -56,9 +57,6 @@ def ExportAsPDF_Preview(homepath, basepath, sourcefolder, tempfolder, destfolder
     
     return("Export to PDF with Preview.app Completed")
 
-#Tabula Conversion PDF to CSV
-#How to get Tabula Dataframe from PDF
-   #test = tabula.read_pdf(paths[2], pages = 'all', guess = True, multiple_tables = True)
 
 def Tabula_UnsecurePDF_Convert(unsecuredpdfpath, outputfolder, output_format = "csv", pages = 'all',guess = True, fileextension = ('.pdf','.PDF'), deletesource = False):     
 #Stream lined way to import tables into python environment for parsing    
@@ -67,22 +65,22 @@ def Tabula_UnsecurePDF_Convert(unsecuredpdfpath, outputfolder, output_format = "
         try: 
             print("Converting File:" + paths[i])
             tabula.convert_into(paths[i],os.path.join(outputfolder,os.path.splitext(os.path.basename(paths[i]))[0] + ".csv"), output_format = "csv", guess = True, multiple_tables = True, pages = 'all')
-            print("Successfully Converted:" + paths[i] + "Output:" + os.path.join(outputfolder,os.path.splitext(os.path.basename(paths[i]))[0] + ".csv"))
-        except Exception as a:
-            print(a)        
-            
-    
-    if deletesource:
-        print ("Deleting Files in Source Folder")
+            print("Successfully Converted:" + paths[i] + " Output:" + os.path.join(outputfolder,os.path.splitext(os.path.basename(paths[i]))[0] + ".csv"))
+   
+ 
+            if deletesource:
+                print ("Deleting File in Source Folder")
         
-        for the_file in os.listdir(unsecuredpdfpath):
-            file_path = os.path.join(unsecuredpdfpath, the_file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-                #elif os.path.isdir(file_path): shutil.rmtree(file_path)
-            except Exception as a:
-                print(a)      
+                try:
+                    if os.path.isfile(paths[i]):
+                        os.unlink(paths[i])
+                    #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+                except Exception as a:
+                    print(a)      
+        except Exception as e:
+            print(e)        
+            
+   
     
     return("Tabula PDF to File conversion completed")   
 
@@ -101,19 +99,20 @@ def main():
     #base_command = 'java -jar ' + tabula_jarpath + ' -p all -f CSV -g -d -o {} {}'
     #Variables
     homepath = os.environ['HOME']
-    basepath = os.path.join(homepath,'ICDM_Research/Stress_Test_Research/StressTest_Research/BHC_PDF_Parser/')
-    sourcefolder = "pdf"
-    tabulaoutput = os.path.join(basepath,"out")
-    #Currently has to be Desktop since we are using Desktop shortcut in Preiview.app
+    basepath = os.path.join(homepath,'ICDM_Research/Stress_Test_Research/StressTest_Research/')
+    sourcefolder = "raw_pdf"
     tempfolder = os.path.join(homepath,"Desktop")
-    destfolder = "preview_converted_pdf"
-    script_path= os.path.join(basepath,"PreviewPDFConverter.scpt")
+    destfolder = "unsecured_pdf"
+    tabulaoutput = os.path.join(basepath,"tabula_csv")
+    #Currently has to be Desktop since we are using Desktop shortcut in Preiview.app
+    
+    script_path= os.path.join(basepath,"BHC_PDF_Parser//PreviewPDFConverter.scpt")
     
     #Call Preview.app Converstion
     ExportAsPDF_Preview(homepath, basepath, sourcefolder, tempfolder, destfolder, script_path, deletesource = False)
 
     #Call for Tabula to convert PDFs to CSV for data manipulation and analysis.
-    Tabula_UnsecurePDF_Convert(unsecuredpdfpath = os.path.join(basepath,destfolder), outputfolder = tabulaoutput)  
+    Tabula_UnsecurePDF_Convert(unsecuredpdfpath = os.path.join(basepath,destfolder), outputfolder = tabulaoutput, deletesource = False)  
 
 
 if __name__ == "__main__": main()
