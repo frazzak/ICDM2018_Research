@@ -170,60 +170,78 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
     result_df = tabulaList_df
     if ReportType == "FFIEC101":
         print("Processing FFIEC101")
-        print(len(result_df))
+        #if isinstance(result_df, pd.DataFrame):
+            
         while i < len(result_df):
             print(i, ReportData)
             repattern2 = r'[ ]\.{1,}'
             deletedflag = False
-            for y in range(0,result_df[i].shape[0]):    
+            if isinstance(result_df, pd.DataFrame):
+                print("DataFrame Passed")
+                result_df_tmp = result_df
+                result_df = [result_df_tmp]
+                #result_df.append(pd.DataFrame(result_df_tmp))
+                i = 0
+                #print(pd.DataFrame(result_df[0]).shape)
+                #result_df.append(result_df_tmp)
+                #print(result_df[i])
+                result_df = result_df[i]
+                breakwhile = True
+            elif isinstance(result_df, list):
+                print("List of DataFrames Passed")
+                result_df = result_df[i]
+                breakwhile = False
+                
+            for y in range(0,result_df.shape[0]):    
                 #print(i,y)
 
-                if result_df[i].iloc[y,0] is np.nan and result_df[i].iloc[y,1].endswith("Dollar Amounts in Thousands"): #Should we dynamically look for the Section?
+                if result_df.iloc[y,0] is np.nan and result_df.iloc[y,1].endswith("Dollar Amounts in Thousands"): #Should we dynamically look for the Section?
                     print("Found Header Misalignment for columns, Correcting.")
-                    result_df[i].iloc[y,0] = "Dollar Amounts in Thousands"
-                    result_df[i].iloc[y,1] = np.nan
-                elif result_df[i].iloc[y,0] is np.nan and result_df[i].iloc[y,1].startswith("Dollar Amounts in Thousands") and not result_df[i].iloc[y,1].endswith("Dollar Amounts in Thousands"):
+                    result_df.iloc[y,0] = "Dollar Amounts in Thousands"
+                    result_df.iloc[y,1] = np.nan
+                elif result_df.iloc[y,0] is np.nan and result_df.iloc[y,1].startswith("Dollar Amounts in Thousands") and not result_df.iloc[y,1].endswith("Dollar Amounts in Thousands"):
                     print("Found Header Misalignment that needs parsing, Correcting.")
-                    result_df[i].iloc[y,0] = "Dollar Amounts in Thousands"
-                    result_df[i].iloc[y,1] = result_df[i].iloc[y,1].split("Dollar Amounts in Thousands ")[-1]
-                elif result_df[i].iloc[y,1] is not np.nan and  bool(re.match(repattern2,result_df[i].iloc[y,1])):
+                    result_df.iloc[y,0] = "Dollar Amounts in Thousands"
+                    result_df.iloc[y,1] = result_df.iloc[y,1].split("Dollar Amounts in Thousands ")[-1]
+                elif result_df.iloc[y,1] is not np.nan and  bool(re.match(repattern2,result_df.iloc[y,1])):
                     print("Found Consecutive space and periods to remove") 
-                    result_df[i].iloc[y,1] =  re.sub(repattern2,"",result_df[i].iloc[y,1]).strip()
-                elif result_df[i].iloc[y,0] is np.nan and result_df[i].iloc[y,1:].str.startswith("Percentage").any() and result_df[i].iloc[y,result_df[i].shape[1] -1] == "HeaderInfo" :
+                    result_df.iloc[y,1] =  re.sub(repattern2,"",result_df.iloc[y,1]).strip()
+                elif result_df.iloc[y,0] is np.nan and result_df.iloc[y,1:].str.startswith("Percentage").any() and result_df.iloc[y,result_df.shape[1] -1] == "HeaderInfo" :
                     print("Description Misalignment: Description in Amounts") 
-                    result_df[i].iloc[y,0] =  "Percentage"
-                    result_df[i].iloc[y,2] = np.nan
+                    result_df.iloc[y,0] =  "Percentage"
+                    result_df.iloc[y,2] = np.nan
                     
-                elif result_df[i].iloc[y,0] is np.nan and result_df[i].iloc[y,1:result_df[i].shape[1] - 2].str.startswith("(Column ").any() and result_df[i].iloc[y,result_df[i].shape[1] -1] == "HeaderInfo" :
+                elif result_df.iloc[y,0] is np.nan and result_df.iloc[y,1:result_df.shape[1] - 2].str.startswith("(Column ").any() and result_df.iloc[y,result_df.shape[1] -1] == "HeaderInfo" :
                     print("Additional Parsing Required For this table, not including in list: (Column [A-Z])") 
-                    #del result_df[i] #After deletion of report, next i and reset or rows required
+                    #del result_df #After deletion of report, next i and reset or rows required
                     coll_idx.append(i)
                     deletedflag = True
                     break
                 
-                elif result_df[i].iloc[y,1:result_df[i].shape[1] - 1].fillna("").str.endswith("Percentage").all() and result_df[i].iloc[y,0] is not np.nan and  result_df[i].iloc[y,result_df[i].shape[1] - 1] is np.nan:
+                elif result_df.iloc[y,1:result_df.shape[1] - 1].fillna("").str.endswith("Percentage").all() and result_df.iloc[y,0] is not np.nan and  result_df.iloc[y,result_df.shape[1] - 1] is np.nan:
                     print("Additional Parsing Required For this table, not including in list: Percentage") 
-                    #del result_df[i] #After deletion of report, next i and reset or rows required
+                    #del result_df #After deletion of report, next i and reset or rows required
                     coll_idx.append(i)
                     deletedflag = True
                     break
               
             if not deletedflag:
                 print("Replacing Blanks with NaNs")
-                result_df[i].replace(r'^\s*$', np.nan, regex=True, inplace = True)
+                result_df.replace(r'^s*$', np.nan, regex=True, inplace = True)
                 print ("Drop Columns that are all NaN")
-                result_df[i]= result_df[i].dropna(axis=1,how='all')            
-                #print(result_df[i])
+                result_df= result_df.dropna(axis=1,how='all')            
+                #print(result_df)
                 FFIEC101_ColumnsBase = ["Description", "ReportCode","Amount","IndexInfo","Report_Type","Report_RSSD","Report_Date"]
                 print("Adding Column Names")
-                result_df[i]["Report_Type"] = ReportData[0] 
-                result_df[i]["Report_RSSD"] = ReportData[1]
-                result_df[i]["Report_Date"] = ReportData[2]
-                print(i, result_df[i].columns.values)
-                result_df[i].columns = FFIEC101_ColumnsBase
-                print(i, result_df[i].columns.values)
-            i += 1            
-             
+                result_df["Report_Type"] = ReportData[0] 
+                result_df["Report_RSSD"] = ReportData[1]
+                result_df["Report_Date"] = ReportData[2]
+                print(i, result_df.columns.values)
+                result_df.columns = FFIEC101_ColumnsBase
+                print(i, result_df.columns.values)
+            if breakwhile: break
+            else: i += 1            
+            
     elif ReportType in ["FFIEC102","FRY15","FRY9LP","BHCPR"]:
         print("To be developed")
     else: print("Report Type Not Found")
@@ -245,7 +263,7 @@ def report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/St
     master_result_list = list()
     FFIEC101_ColumnsBase = ["Description", "ReportCode","Amount","IndexInfo","Report_Type","Report_RSSD","Report_Date"]
     if isinstance(reportfilepath, list):
-        
+        print("Paths is List:", isinstance(reportfilepath, list))
         for y in reportfilepath:                 
             ReportData = os.path.basename(y).replace(extension,"").split("_")
             print("Determining Report Type to set parameters for:",y)
@@ -270,8 +288,15 @@ def report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/St
                 print("Aligning Columns and adding Column Names")
                 result_df = report_column_alignmentstruct(result_df,ReportData[0], ReportData)
                 print("Concatenating Dataframes")
-                result_df = pd.concat(result_df, ignore_index = True)
-                master_result_list.append(result_df)
+                print(type(result_df))
+                if isinstance(result_df, pd.DataFrame):
+                    print("DataFrame to Concat")
+                    master_result_list.append(result_df)
+                if isinstance(result_df, list):
+                    print("List to Concat")
+                    #master_result = pd.concat(result_df)
+                    result_df = pd.concat(result_df, ignore_index = True)
+                    master_result_list.append(result_df)
             master_result = pd.concat(master_result_list)
             returnobj = master_result.dropna(axis=1,how='all')  
             returnobj = returnobj.reset_index(drop = True)
@@ -297,7 +322,13 @@ def report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/St
             print("Aligning Columns and adding Column Names")
             result_df = report_column_alignmentstruct(result_df,ReportData[0], ReportData)
             print("Concatenating Dataframes")
-            master_result = pd.concat(result_df)
+            print(type(result_df))
+            if isinstance(result_df, pd.DataFrame):
+                print("DataFrame to Concat")
+                master_result = result_df
+            if isinstance(result_df, list):
+                print("List to Concat")
+                master_result = pd.concat(result_df)
             returnobj = master_result.dropna(axis=1,how='all')  
             #returnobj = returnobj.reset_index(drop = True)
             
@@ -313,8 +344,8 @@ homepath = os.environ['HOME']
 basepath = os.path.join(homepath,'ICDM_Research/Stress_Test_Research/StressTest_Research/')
 sourcefolder = os.path.join(basepath,"unsecured_pdf_complete")
 os.listdir(sourcefolder)
-ReportName_prefix = 'FFIEC101_1039502'
-ReportName_suffix = '20151231.PDF.pdf'
+ReportName_prefix = 'FFIEC101_'
+ReportName_suffix = '.PDF.pdf'
 paths = [ os.path.join(sourcefolder,fn) for fn in os.listdir(sourcefolder) if fn.startswith(ReportName_prefix) & fn.endswith(ReportName_suffix)]
 ########
 
@@ -322,7 +353,6 @@ del(result_ffiec101)
 
 result_ffiec101 = report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/unsecured_pdf_complete/", reportfilepath = paths, extension = ".PDF.pdf")
 result_ffiec101.shape
-
 
 
 #############Testing
