@@ -67,7 +67,8 @@ def report_item_tagger_collapser(test_tmp):
                    
             if test_tmp.iloc[i,0] is not np.nan and  '..' in test_tmp.iloc[i,0] or test_tmp.iloc[i,1:indexcode_idx].notnull().all() and '..' in test_tmp.iloc[i,1]:
                 str_tmp.append(test_tmp.iloc[i,0])
-                print(" ".join(str_tmp),test_tmp.iloc[i,1],test_tmp.iloc[i,2],test_tmp.iloc[i,3],test_tmp.iloc[i,indexcode_idx],"| Collapsed")
+                #print(" ".join(str_tmp),test_tmp.iloc[i,1],test_tmp.iloc[i,2],test_tmp.iloc[i,3],test_tmp.iloc[i,indexcode_idx],"| Collapsed")
+                print(" ".join(str_tmp),test_tmp.iloc[i,indexcode_idx],"| Collapsed")
                 print("Updating Row")
                 test_tmp.iloc[i,0] = " ".join(str_tmp)
                 #print("Deleting Collapsed Rows")
@@ -162,8 +163,7 @@ def column_cleanup(repattern = None, tableobj_tmp = None, fillna = '', verbose =
 
 
 
-
-
+#Include Page 6 handling.
 def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101", ReportData = None):    
     i = 0
     coll_idx = []
@@ -177,7 +177,7 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
             repattern2 = r'[ ]\.{1,}'
             deletedflag = False
             if isinstance(result_df, pd.DataFrame):
-                print("DataFrame Passed")
+                print("DataFrame Passed: Alignment Struct")
                 result_df_tmp = result_df
                 result_df = [result_df_tmp]
                 #result_df.append(pd.DataFrame(result_df_tmp))
@@ -185,62 +185,82 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
                 #print(pd.DataFrame(result_df[0]).shape)
                 #result_df.append(result_df_tmp)
                 #print(result_df[i])
-                result_df = result_df[i]
-                breakwhile = True
+                result_df_tmp = result_df[i]
+                print(result_df_tmp)
+                if result_df_tmp.shape[1] > 2:
+                    print("Changing Column 1 to String")
+                    result_df_tmp.iloc[:,1] = result_df_tmp.iloc[:,1].astype(str)
+                    breakwhile = True
+                    
             elif isinstance(result_df, list):
                 print("List of DataFrames Passed")
-                result_df = result_df[i]
-                breakwhile = False
-                
-            for y in range(0,result_df.shape[0]):    
-                #print(i,y)
-
-                if result_df.iloc[y,0] is np.nan and result_df.iloc[y,1].endswith("Dollar Amounts in Thousands"): #Should we dynamically look for the Section?
-                    print("Found Header Misalignment for columns, Correcting.")
-                    result_df.iloc[y,0] = "Dollar Amounts in Thousands"
-                    result_df.iloc[y,1] = np.nan
-                elif result_df.iloc[y,0] is np.nan and result_df.iloc[y,1].startswith("Dollar Amounts in Thousands") and not result_df.iloc[y,1].endswith("Dollar Amounts in Thousands"):
-                    print("Found Header Misalignment that needs parsing, Correcting.")
-                    result_df.iloc[y,0] = "Dollar Amounts in Thousands"
-                    result_df.iloc[y,1] = result_df.iloc[y,1].split("Dollar Amounts in Thousands ")[-1]
-                elif result_df.iloc[y,1] is not np.nan and  bool(re.match(repattern2,result_df.iloc[y,1])):
-                    print("Found Consecutive space and periods to remove") 
-                    result_df.iloc[y,1] =  re.sub(repattern2,"",result_df.iloc[y,1]).strip()
-                elif result_df.iloc[y,0] is np.nan and result_df.iloc[y,1:].str.startswith("Percentage").any() and result_df.iloc[y,result_df.shape[1] -1] == "HeaderInfo" :
-                    print("Description Misalignment: Description in Amounts") 
-                    result_df.iloc[y,0] =  "Percentage"
-                    result_df.iloc[y,2] = np.nan
+                result_df_tmp = result_df[i]
+                print(result_df_tmp)
+                if result_df_tmp.shape[1] > 2:
+                    print("Changing Column 1 to String")
+                    result_df_tmp.iloc[:,1] = result_df_tmp.iloc[:,1].astype(str)
+                    breakwhile = False
                     
-                elif result_df.iloc[y,0] is np.nan and result_df.iloc[y,1:result_df.shape[1] - 2].str.startswith("(Column ").any() and result_df.iloc[y,result_df.shape[1] -1] == "HeaderInfo" :
+            for y in range(0,result_df_tmp.shape[0]):    
+                #print(i,y)
+                if result_df_tmp.shape[1] < 2:
+                    print("Additional Parsing Required For this page, not including in list: Few Columns") 
+                    #del result_df_tmp #After deletion of report, next i and reset or rows required
+                    coll_idx.append(i)
+                    deletedflag = True
+                elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1].endswith("Dollar Amounts in Thousands"): #Should we dynamically look for the Section?
+                    print("Found Header Misalignment for columns, Correcting.")
+                    result_df_tmp.iloc[y,0] = "Dollar Amounts in Thousands"
+                    result_df_tmp.iloc[y,1] = np.nan
+                elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1].startswith("Dollar Amounts in Thousands") and not result_df_tmp.iloc[y,1].endswith("Dollar Amounts in Thousands"):
+                    print("Found Header Misalignment that needs parsing, Correcting.")
+                    result_df_tmp.iloc[y,0] = "Dollar Amounts in Thousands"
+                    result_df_tmp.iloc[y,1] = result_df_tmp.iloc[y,1].split("Dollar Amounts in Thousands ")[-1]
+                elif result_df_tmp.iloc[y,1] is not np.nan and  bool(re.match(repattern2,result_df_tmp.iloc[y,1])):
+                    print("Found Consecutive space and periods to remove") 
+                    result_df_tmp.iloc[y,1] =  re.sub(repattern2,"",result_df_tmp.iloc[y,1]).strip()
+                elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1:].str.startswith("Percentage").any() and result_df_tmp.iloc[y,result_df_tmp.shape[1] -1] == "HeaderInfo" :
+                    print("Description Misalignment: Description in Amounts") 
+                    result_df_tmp.iloc[y,0] =  "Percentage"
+                    result_df_tmp.iloc[y,2] = np.nan
+                    
+                elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1:result_df_tmp.shape[1] - 2].str.startswith("(Column ").any() and result_df_tmp.iloc[y,result_df_tmp.shape[1] -1] == "HeaderInfo" :
                     print("Additional Parsing Required For this table, not including in list: (Column [A-Z])") 
-                    #del result_df #After deletion of report, next i and reset or rows required
+                    #del result_df_tmp #After deletion of report, next i and reset or rows required
                     coll_idx.append(i)
                     deletedflag = True
                     break
                 
-                elif result_df.iloc[y,1:result_df.shape[1] - 1].fillna("").str.endswith("Percentage").all() and result_df.iloc[y,0] is not np.nan and  result_df.iloc[y,result_df.shape[1] - 1] is np.nan:
+                elif result_df_tmp.iloc[y,1:result_df_tmp.shape[1] - 1].fillna("").str.endswith("Percentage").all() and result_df_tmp.iloc[y,0] is not np.nan and  result_df_tmp.iloc[y,result_df_tmp.shape[1] - 1] is np.nan:
                     print("Additional Parsing Required For this table, not including in list: Percentage") 
-                    #del result_df #After deletion of report, next i and reset or rows required
+                    #del result_df_tmp #After deletion of report, next i and reset or rows required
                     coll_idx.append(i)
                     deletedflag = True
                     break
-              
+                
             if not deletedflag:
                 print("Replacing Blanks with NaNs")
-                result_df.replace(r'^s*$', np.nan, regex=True, inplace = True)
+                
+                result_df_tmp = result_df_tmp.replace("NaN", np.nan)
+                result_df_tmp = result_df_tmp.replace("nan", np.nan)
+                result_df_tmp.replace(r'^s*$', np.nan, regex=True, inplace = True)
+                #print(result_df_tmp)
                 print ("Drop Columns that are all NaN")
-                result_df= result_df.dropna(axis=1,how='all')            
-                #print(result_df)
+                result_df_tmp= result_df_tmp.dropna(axis=1,how='all')            
+                print(result_df_tmp)
                 FFIEC101_ColumnsBase = ["Description", "ReportCode","Amount","IndexInfo","Report_Type","Report_RSSD","Report_Date"]
                 print("Adding Column Names")
-                result_df["Report_Type"] = ReportData[0] 
-                result_df["Report_RSSD"] = ReportData[1]
-                result_df["Report_Date"] = ReportData[2]
-                print(i, result_df.columns.values)
-                result_df.columns = FFIEC101_ColumnsBase
-                print(i, result_df.columns.values)
-            if breakwhile: break
-            else: i += 1            
+                result_df_tmp["Report_Type"] = ReportData[0] 
+                result_df_tmp["Report_RSSD"] = ReportData[1]
+                result_df_tmp["Report_Date"] = ReportData[2]
+                print(i, result_df_tmp.columns.values)
+                result_df_tmp.columns = FFIEC101_ColumnsBase
+                print(i, result_df_tmp.columns.values)
+            result_df[i] = result_df_tmp    
+            if breakwhile and i == 0: 
+                break
+            else: 
+                i += 1            
             
     elif ReportType in ["FFIEC102","FRY15","FRY9LP","BHCPR"]:
         print("To be developed")
@@ -258,18 +278,21 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
     
 
 
+
 def report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/unsecured_pdf_complete/", reportfilepath = None, extension = ".PDF.pdf"):
     result_df = list()
     master_result_list = list()
-    FFIEC101_ColumnsBase = ["Description", "ReportCode","Amount","IndexInfo","Report_Type","Report_RSSD","Report_Date"]
+   # FFIEC101_ColumnsBase = ["Description", "ReportCode","Amount","IndexInfo","Report_Type","Report_RSSD","Report_Date"]
     if isinstance(reportfilepath, list):
         print("Paths is List:", isinstance(reportfilepath, list))
         for y in reportfilepath:                 
             ReportData = os.path.basename(y).replace(extension,"").split("_")
+            if ReportData[2] < "20160101":
+                filepages = "2-5"
+            else:
+                filepages = "2-6"
             print("Determining Report Type to set parameters for:",y)
             if ReportData[0] == "FFIEC101":
-                print("Processing:",ReportData[0])
-                filepages = "2-5"    
                 print("Processing Tables with Tabula")
                 report = tabula.read_pdf(y, pages = filepages, guess = True, multiple_tables = True)
                 
@@ -302,9 +325,14 @@ def report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/St
             returnobj = returnobj.reset_index(drop = True)
     else:
         ReportData = os.path.basename(reportfilepath).replace(extension,"").split("_")
-        if ReportData[0] == "FFIEC101":
+        if ReportData[2] < "20160101":
+            filepages = "2-5"
+        else:
+            filepages = "2-6"
+        if ReportData[0] == "FFIEC101": #Report pages change after 2016
             print("Processing:",ReportData[0])
-            filepages = "2-5"    
+            
+            
             print("Processing Tables with Tabula")
             report = tabula.read_pdf(reportfilepath, pages = filepages, guess = True, multiple_tables = True)
             
@@ -354,7 +382,9 @@ del(result_ffiec101)
 result_ffiec101 = report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/unsecured_pdf_complete/", reportfilepath = paths, extension = ".PDF.pdf")
 result_ffiec101.shape
 
-
+#Output to CSV
+result_ffiec101.to_csv(os.path.join(basepath,"ParsedFiles/ffiec101_out.csv"),sep = ",",encoding = "utf-8")
+#TODO: Only getting upto Index 29.  What about other pages.  Concatenation problem?
 #############Testing
 #report = tabula.read_pdf(paths[0], pages = filepages, guess = True, multiple_tables = True)
 
