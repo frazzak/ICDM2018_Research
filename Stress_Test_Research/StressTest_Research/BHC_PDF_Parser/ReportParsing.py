@@ -78,7 +78,7 @@ def report_item_tagger_collapser(test_tmp):
             #print(test_tmp.iloc[i,0],test_tmp.iloc[i,1],test_tmp.iloc[i,2],test_tmp.iloc[i,3],test_tmp.iloc[i,4],"| Collapse Above to Here")
             #pass
         elif test_tmp.iloc[i,indexcode_idx] is np.nan:
-            print(test_tmp.iloc[i,0],test_tmp.iloc[i,1],test_tmp.iloc[i,2],test_tmp.iloc[i,3],test_tmp.iloc[i,indexcode_idx], '| FAILED')
+            print(test_tmp.iloc[i,:], '| FAILED')
             failed_idx.append(i)
     try:
         print("Deleting index ", coll_idx)
@@ -185,7 +185,7 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
                 #result_df.append(result_df_tmp)
                 #print(result_df[i])
                 result_df_tmp = result_df[i]
-                print(result_df_tmp)
+                #print(result_df_tmp)
                 if result_df_tmp.shape[1] > 2:
                     print("Changing Column 1 to String")
                     result_df_tmp.iloc[:,1] = result_df_tmp.iloc[:,1].astype(str)
@@ -194,10 +194,10 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
             elif isinstance(result_df, list):
                 print("List of DataFrames Passed")
                 result_df_tmp = result_df[i]
-                print(result_df_tmp)
+                #print(result_df_tmp)
                 if result_df_tmp.shape[1] > 2:
-                    print("Changing Column 1 to String")
-                    result_df_tmp.iloc[:,1] = result_df_tmp.iloc[:,1].astype(str)
+                    #print("Changing Column 1 to String")
+                    #result_df_tmp.iloc[:,1] = result_df_tmp.iloc[:,1].astype(str)
                     breakwhile = False
             
             if ReportType == "FFIEC102" and result_df_tmp.shape[1] == 5 and result_df_tmp.iloc[0,0] is np.nan and result_df_tmp.iloc[0,2] == "MRRR" and result_df_tmp.iloc[0,3] in  ["Percentage","Date","Amount"]:
@@ -215,8 +215,8 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
                 result_df_tmp[[3]] = result_df_tmp[[3]].astype(str)
                 
                 
-                print(result_df_tmp)
-                    
+                #print(result_df_tmp)
+                   
                 
                 
             for y in range(0,result_df_tmp.shape[0]):    
@@ -228,11 +228,12 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
                     #del result_df_tmp #After deletion of report, next i and reset or rows required
                     coll_idx.append(i)
                     deletedflag = True
-                elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1].endswith("Dollar Amounts in Thousands"): #Should we dynamically look for the Section?
+               
+                elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1] is not np.nan and  result_df_tmp.iloc[y,1].endswith("Dollar Amounts in Thousands"): #Should we dynamically look for the Section?
                     print("Found Header Misalignment for columns, Correcting.")
                     result_df_tmp.iloc[y,0] = "Dollar Amounts in Thousands"
                     result_df_tmp.iloc[y,1] = np.nan
-                elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1].startswith("Dollar Amounts in Thousands") and not result_df_tmp.iloc[y,1].endswith("Dollar Amounts in Thousands"):
+                elif result_df_tmp.iloc[y,0] is np.nan and  result_df_tmp.iloc[y,1] is not np.nan and result_df_tmp.iloc[y,1].startswith("Dollar Amounts in Thousands") and not result_df_tmp.iloc[y,1].endswith("Dollar Amounts in Thousands"):
                     print("Found Header Misalignment that needs parsing, Correcting.")
                     result_df_tmp.iloc[y,0] = "Dollar Amounts in Thousands"
                     result_df_tmp.iloc[y,1] = result_df_tmp.iloc[y,1].split("Dollar Amounts in Thousands ")[-1]
@@ -245,11 +246,16 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
                     print("Description Misalignment: Description in Amounts") 
                     result_df_tmp.iloc[y,0] =  "Percentage"
                     result_df_tmp.iloc[y,2] = np.nan
-                elif result_df_tmp.iloc[y,2] == "MRRR" and result_df_tmp.iloc[y,3] in  ["Percentage","Date","Amount"] and result_df_tmp.iloc[y,result_df_tmp.shape[1] -1] == "HeaderInfo":
+               
+                elif result_df_tmp.iloc[y,2] == "MRRR" and result_df_tmp.iloc[y,3] in  ["Percentage","Date","Amount","Number"] and result_df_tmp.iloc[y,result_df_tmp.shape[1] -1] == "HeaderInfo":
                     print("Shifting Header Info to Column 0")
                     result_df_tmp.iloc[y,0] = result_df_tmp.iloc[y,3]
                     result_df_tmp.iloc[y,3] = np.nan
                     
+                
+               
+                    
+                
                 elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1:result_df_tmp.shape[1] - 2].str.startswith("(Column ").any() and result_df_tmp.iloc[y,result_df_tmp.shape[1] -1] == "HeaderInfo" :
                     print("Additional Parsing Required For this table, not including in list: (Column [A-Z])") 
                     #del result_df_tmp #After deletion of report, next i and reset or rows required
@@ -263,8 +269,30 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
                     coll_idx.append(i)
                     deletedflag = True
                     break
+                
+                
+                elif ReportType == "FFIEC102" and result_df_tmp.iloc[y,0] is not np.nan  and result_df_tmp.iloc[y,2] is not np.nan and result_df_tmp.iloc[y,result_df_tmp.shape[1] -1] is not np.nan and (result_df_tmp.iloc[y,result_df_tmp.shape[1] -1].endswith(result_df_tmp.iloc[y,0] + ".") or result_df_tmp.iloc[y,result_df_tmp.shape[1] -1].endswith(result_df_tmp.iloc[y,0])) and result_df_tmp.iloc[y,2].count(" ") == 1:
+                    print("FFIEC102 Additional Parsing Required: Concatenating Column 0 and 1 and splitting column 2 addint period to index")
+                    #print(result_df_tmp.iloc[y,:])
+                    if result_df_tmp.iloc[y,0].count(".") > 0:
+                        result_df_tmp.iloc[y,0] = result_df_tmp.iloc[y,0] + " " + result_df_tmp.iloc[y,1]
+                    else: 
+                        result_df_tmp.iloc[y,0] = result_df_tmp.iloc[y,0] + ". " + result_df_tmp.iloc[y,1]
+                    result_df_tmp.iloc[y,1] = result_df_tmp.iloc[y,2].split(" ")[0]
+                    result_df_tmp.iloc[y,2] = result_df_tmp.iloc[y,2].split(" ")[1]
+                
+                    if result_df_tmp.iloc[y,0] == "nannan":      
+                        print("FFIEC102 Additional Parsing and shifting of HeaderInfo: MRRR Number")
+                        result_df_tmp.iloc[y,0] = result_df_tmp.iloc[y,2]
+                        result_df_tmp.iloc[y,2] = np.nan
+                    else: 
+                        pass
+                
                 elif ReportType == "FFIEC102" and result_df_tmp.shape[1] == 5 and result_df_tmp.iloc[y,3] is not np.nan and result_df_tmp.iloc[y,3].count(".") == 2:
                     result_df_tmp.iloc[y,3] = result_df_tmp.iloc[y,3].replace(".","",1)              
+            
+            
+            
             if not deletedflag:
                 print("Replacing Blanks with NaNs")
                 
@@ -274,7 +302,7 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
                 #print(result_df_tmp)
                 print ("Drop Columns that are all NaN")
                 result_df_tmp= result_df_tmp.dropna(axis=1,how='all')            
-                print(result_df_tmp)
+                #print(result_df_tmp)
                 FFIEC101_ColumnsBase = ["Description", "ReportCode","Amount","IndexInfo","Report_Type","Report_RSSD","Report_Date"]
                 print("Adding Column Names")
                 result_df_tmp["Report_Type"] = ReportData[0] 
@@ -412,6 +440,7 @@ result_ffiec101.shape
 result_ffiec101.to_csv(os.path.join(basepath,"ParsedFiles/ffiec101_out.csv"),sep = ",",encoding = "utf-8", index= False)
 
 
+
 #FFIEC_102
 ###File path variables
 # File naming and renameing for input.
@@ -419,7 +448,7 @@ homepath = os.environ['HOME']
 basepath = os.path.join(homepath,'ICDM_Research/Stress_Test_Research/StressTest_Research/')
 sourcefolder = os.path.join(basepath,"unsecured_pdf_complete")
 os.listdir(sourcefolder)
-ReportName_prefix = 'FFIEC102_1039502'
+ReportName_prefix = 'FFIEC102'
 ReportName_suffix = '.PDF.pdf'
 paths = [ os.path.join(sourcefolder,fn) for fn in os.listdir(sourcefolder) if fn.startswith(ReportName_prefix) & fn.endswith(ReportName_suffix)]
 ########
@@ -427,83 +456,118 @@ len(paths)
 del(result_ffiec102)
 result_ffiec102 = report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/unsecured_pdf_complete/", reportfilepath = paths, extension = ".PDF.pdf")
 result_ffiec102.shape
+
 #Output to CSV
 result_ffiec102.to_csv(os.path.join(basepath,"ParsedFiles/ffiec102_out.csv"),sep = ",",encoding = "utf-8", index= False)
 
 
 
-
+result_ffiec102.iloc[90:100,:]
 
 ####Testing
 report = tabula.read_pdf(paths[0], pages = "all", guess = True, multiple_tables = True)
 len(report)
 
-result_df_tmp = report[4] 
+result_df_tmp = report[5] 
 ReportType ="FFIEC102"      
-if ReportType == "FFIEC102" and result_df_tmp.shape[1] == 5 and result_df_tmp.iloc[0,0] is np.nan and result_df_tmp.iloc[0,2] == "MRRR" and result_df_tmp.iloc[0,3] == "Percentage":
-            print("FFIEC102 Misalignment, 5 columns to 4:Percentage")
-            #result_df_tmp.iloc[:,0:1] = result_df_tmp.iloc[:,0:1].astype(object)
-            #str_tmp = []
-            #str_tmp.append(result_df_tmp.iloc[0,0])
-            #str_tmp.append(result_df_tmp.iloc[0,1])
-            print(result_df_tmp[[0,1]])
-            result_df_tmp.iloc[:,0] = result_df_tmp[[0,1]].astype(str).apply(lambda x: ''.join(x), axis=1)
-            result_df_tmp[[1]] = np.nan
-            result_df_tmp.iloc[:,1] = result_df_tmp.iloc[:,1].astype(object)
-            result_df_tmp.iloc[0,0] = "Percentage"
-            result_df_tmp.iloc[0,3] = np.nan
-            #Replace first period in column 3
-            
-           #print(result_df_tmp.iloc[:,3].astype(str).replace(".","",1))
-            
-            
-            print(result_df_tmp)
+
+if ReportType == "FFIEC102" and result_df_tmp.shape[1] == 5 and result_df_tmp.iloc[0,0] is np.nan and result_df_tmp.iloc[0,2] == "MRRR" and result_df_tmp.iloc[0,3] in  ["Percentage","Date","Amount"]:
+    print("FFIEC102 Misalignment, 5 columns to 4")
+    #result_df_tmp.iloc[:,0] = result_df_tmp[[0,1]].astype(str).apply(lambda x: ''.join(x), axis=1)
+    #result_df_tmp.iloc[:,1] = np.nan
+    #result_df_tmp.iloc[0,0] = "Percentage"
+    #result_df_tmp.iloc[0,3] = np.nan
+    
+    result_df_tmp.iloc[:,0] = result_df_tmp[[0,1]].astype(str).apply(lambda x: ''.join(x), axis=1)
+    result_df_tmp[[1]] = np.nan
+    result_df_tmp.iloc[:,1] = result_df_tmp.iloc[:,1].astype(object)
+    result_df_tmp.iloc[0,0] = result_df_tmp.iloc[0,3]
+    result_df_tmp.iloc[0,3] = np.nan
+    result_df_tmp[[3]] = result_df_tmp[[3]].astype(str)
+    
+    
+    print(result_df_tmp)
+       
+                        
+                
 for y in range(0,result_df_tmp.shape[0]):    
-        #print(i,y)
-        
-        
-        if result_df_tmp.shape[1] < 2:
-            print("Additional Parsing Required For this page, not including in list: Few Columns") 
-            #del result_df_tmp #After deletion of report, next i and reset or rows required
-            coll_idx.append(i)
-            deletedflag = True
-        elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1].endswith("Dollar Amounts in Thousands"): #Should we dynamically look for the Section?
-            print("Found Header Misalignment for columns, Correcting.")
-            result_df_tmp.iloc[y,0] = "Dollar Amounts in Thousands"
-            result_df_tmp.iloc[y,1] = np.nan
-        elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1].startswith("Dollar Amounts in Thousands") and not result_df_tmp.iloc[y,1].endswith("Dollar Amounts in Thousands"):
-            print("Found Header Misalignment that needs parsing, Correcting.")
-            result_df_tmp.iloc[y,0] = "Dollar Amounts in Thousands"
-            result_df_tmp.iloc[y,1] = result_df_tmp.iloc[y,1].split("Dollar Amounts in Thousands ")[-1]
-        
-        
-        
-        
-        elif result_df_tmp.iloc[y,1] is not np.nan and bool(re.match(repattern2,result_df_tmp.iloc[y,1])):
-            print("Found Consecutive space and periods to remove")
-            print(result_df_tmp.iloc[y,1])
-            result_df_tmp.iloc[y,1] =  re.sub(repattern2,"",result_df_tmp.iloc[y,1].astype(object)).strip()
-            
-            
-            
-        elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1:].str.startswith("Percentage").any() and result_df_tmp.iloc[y,result_df_tmp.shape[1] -1] == "HeaderInfo" :
-            print("Description Misalignment: Description in Amounts") 
-            result_df_tmp.iloc[y,0] =  "Percentage"
-            result_df_tmp.iloc[y,2] = np.nan
-            
-        elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1:result_df_tmp.shape[1] - 2].str.startswith("(Column ").any() and result_df_tmp.iloc[y,result_df_tmp.shape[1] -1] == "HeaderInfo" :
-            print("Additional Parsing Required For this table, not including in list: (Column [A-Z])") 
-            #del result_df_tmp #After deletion of report, next i and reset or rows required
-            coll_idx.append(i)
-            deletedflag = True
-            break
-        
-        elif result_df_tmp.iloc[y,1:result_df_tmp.shape[1] - 1].fillna("").str.endswith("Percentage").all() and result_df_tmp.iloc[y,0] is not np.nan and  result_df_tmp.iloc[y,result_df_tmp.shape[1] - 1] is np.nan:
-            print("Additional Parsing Required For this table, not including in list: Percentage") 
-            #del result_df_tmp #After deletion of report, next i and reset or rows required
-            coll_idx.append(i)
-            deletedflag = True
-            break
-        elif ReportType == "FFIEC102" and result_df_tmp.shape[1] == 5 and result_df_tmp.iloc[y,3] is not np.nan and result_df_tmp.iloc[y,3].count(".") == 2:
-            result_df_tmp.iloc[y,3] = result_df_tmp.iloc[y,3].replace(".","",1)              
+    #print(i,y)
+    
+    
+    if result_df_tmp.shape[1] < 2:
+        print("Additional Parsing Required For this page, not including in list: Few Columns") 
+        #del result_df_tmp #After deletion of report, next i and reset or rows required
+        coll_idx.append(i)
+        deletedflag = True
    
+    elif ReportType == "FFIEC102"  and result_df_tmp.iloc[y,0] is not np.nan  and result_df_tmp.iloc[y,2] is not np.nan and result_df_tmp.iloc[y,result_df_tmp.shape[1] - 1].endswith(result_df_tmp.iloc[y,0] + ".") and result_df_tmp.iloc[y,2].count(" ") == 1:
+        print("FFIEC102 Additional Parsing Required: Concatenating Column 0 and 1 and splitting column 2 addint period to index")
+        #print(result_df_tmp.iloc[y,:])
+        result_df_tmp.iloc[y,0] = result_df_tmp.iloc[y,0] + ". " + result_df_tmp.iloc[y,1]
+        result_df_tmp.iloc[y,1] = result_df_tmp.iloc[y,2].split(" ")[0]
+        result_df_tmp.iloc[y,2] = result_df_tmp.iloc[y,2].split(" ")[1]
+    
+        if result_df_tmp.iloc[y,0] == "nannan":      
+            print("FFIEC102 Additional Parsing and shifting of HeaderInfo: MRRR Number")
+            result_df_tmp.iloc[y,0] = result_df_tmp.iloc[y,2]
+            result_df_tmp.iloc[y,2] = np.nan
+        else: 
+            pass
+    
+    elif ReportType == "FFIEC102" and result_df_tmp.iloc[y,0] is not np.nan  and (result_df_tmp.iloc[y,2] is not np.nan or result_df_tmp.iloc[y,2] != "nan") and result_df_tmp.iloc[y,result_df_tmp.shape[1] - 1].endswith(result_df_tmp.iloc[y,0]) and result_df_tmp.iloc[y,2].count(" ") == 1:
+        print("FFIEC102 Additional Parsing Required: Concatenating Column 0 and 1 and splitting column 2 without adding period")
+        print(result_df_tmp.iloc[y,:])
+        result_df_tmp.iloc[y,0] = result_df_tmp.iloc[y,0] + ". " + result_df_tmp.iloc[y,1]
+        result_df_tmp.iloc[y,1] = result_df_tmp.iloc[y,2].split(" ")[0]
+        result_df_tmp.iloc[y,2] = result_df_tmp.iloc[y,2].split(" ")[1]
+    
+        if result_df_tmp.iloc[y,0] == "nannan":      
+            print("FFIEC102 Additional Parsing and shifting of HeaderInfo: MRRR Number")
+            result_df_tmp.iloc[y,0] = result_df_tmp.iloc[y,2]
+            result_df_tmp.iloc[y,2] = np.nan
+        else: 
+            pass
+    
+    
+    elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1] is not np.nan and  result_df_tmp.iloc[y,1].endswith("Dollar Amounts in Thousands"): #Should we dynamically look for the Section?
+        print("Found Header Misalignment for columns, Correcting.")
+        result_df_tmp.iloc[y,0] = "Dollar Amounts in Thousands"
+        result_df_tmp.iloc[y,1] = np.nan
+    elif result_df_tmp.iloc[y,0] is np.nan and  result_df_tmp.iloc[y,1] is not np.nan and result_df_tmp.iloc[y,1].startswith("Dollar Amounts in Thousands") and not result_df_tmp.iloc[y,1].endswith("Dollar Amounts in Thousands"):
+        print("Found Header Misalignment that needs parsing, Correcting.")
+        result_df_tmp.iloc[y,0] = "Dollar Amounts in Thousands"
+        result_df_tmp.iloc[y,1] = result_df_tmp.iloc[y,1].split("Dollar Amounts in Thousands ")[-1]
+            
+    elif result_df_tmp.iloc[y,1] is not np.nan and bool(re.match(repattern2,result_df_tmp.iloc[y,1])):
+        print("Found Consecutive space and periods to remove")
+        print(result_df_tmp.iloc[y,1])
+        result_df_tmp.iloc[y,1] =  re.sub(repattern2,"",result_df_tmp.iloc[y,1].astype(object)).strip()
+    elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1:].str.startswith("Percentage").any() and result_df_tmp.iloc[y,result_df_tmp.shape[1] -1] == "HeaderInfo" :
+        print("Description Misalignment: Description in Amounts") 
+        result_df_tmp.iloc[y,0] =  "Percentage"
+        result_df_tmp.iloc[y,2] = np.nan
+   
+    elif result_df_tmp.iloc[y,2] == "MRRR" and result_df_tmp.iloc[y,3] in  ["Percentage","Date","Amount","Number"] and result_df_tmp.iloc[y,result_df_tmp.shape[1] -1] == "HeaderInfo":
+        print("Shifting Header Info to Column 0")
+        result_df_tmp.iloc[y,0] = result_df_tmp.iloc[y,3]
+        result_df_tmp.iloc[y,3] = np.nan
+        
+    
+   
+        
+    
+    elif result_df_tmp.iloc[y,0] is np.nan and result_df_tmp.iloc[y,1:result_df_tmp.shape[1] - 2].str.startswith("(Column ").any() and result_df_tmp.iloc[y,result_df_tmp.shape[1] -1] == "HeaderInfo" :
+        print("Additional Parsing Required For this table, not including in list: (Column [A-Z])") 
+        #del result_df_tmp #After deletion of report, next i and reset or rows required
+        coll_idx.append(i)
+        deletedflag = True
+        break
+    
+    elif result_df_tmp.iloc[y,1:result_df_tmp.shape[1] - 1].fillna("").str.endswith("Percentage").all() and result_df_tmp.iloc[y,0] is not np.nan and  result_df_tmp.iloc[y,result_df_tmp.shape[1] - 1] is np.nan:
+        print("Additional Parsing Required For this table, not including in list: Percentage") 
+        #del result_df_tmp #After deletion of report, next i and reset or rows required
+        coll_idx.append(i)
+        deletedflag = True
+        break
+    elif ReportType == "FFIEC102" and result_df_tmp.shape[1] == 5 and result_df_tmp.iloc[y,3] is not np.nan and result_df_tmp.iloc[y,3].count(".") == 2:
+        result_df_tmp.iloc[y,3] = result_df_tmp.iloc[y,3].replace(".","",1)              
