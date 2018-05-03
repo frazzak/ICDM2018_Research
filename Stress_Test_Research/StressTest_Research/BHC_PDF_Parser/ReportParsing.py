@@ -294,11 +294,12 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
                     else: 
                         pass
                 
-                elif ReportType == "FFIEC102" and result_df_tmp.shape[1] == 5 and result_df_tmp.iloc[y,3] is not np.nan and result_df_tmp.iloc[y,3].count(".") == 2:
+                elif ReportType in ["FFIEC101","FFIEC102"] and result_df_tmp.shape[1] == 5 and result_df_tmp.iloc[y,3] is not np.nan and result_df_tmp.iloc[y,3].count(".") == 2:
+                    print("Extraneous Periods Found: Percentage prefixed period")
                     result_df_tmp.iloc[y,3] = result_df_tmp.iloc[y,3].replace(".","",1)              
             
                 elif ReportType == "FRY15" and result_df_tmp.shape[1] == 5 and result_df_tmp.iloc[y,1] == "RISK" and result_df_tmp.iloc[y,2] == "Amount" and result_df_tmp.iloc[y,3] is np.nan and result_df_tmp.iloc[y,4] == "HeaderInfo":
-                    print("FRY15 Addiotnal Parsing and shifting: RISK AMOUNT Header Aligment")
+                    print("FRY15 Additional Parsing and shifting: RISK AMOUNT Header Aligment")
                     result_df_tmp.iloc[y,3] = result_df_tmp.iloc[y,2]
                     result_df_tmp.iloc[y,2] = np.nan
                     #result_df_tmp.iloc[y,4] = "HeaderInfo"
@@ -324,8 +325,29 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
                 result_df_tmp.columns = FFIEC101_ColumnsBase
                 print(i, result_df_tmp.columns.values)
                 
-                print("Data Cleanup")
+                print("Post Alignment Data Cleanup")
+                print("Removing Bad OCR __ _")
                 result_df_tmp["Amount"] = result_df_tmp["Amount"].str.replace("__ _ ","")
+                print("Removing Artifact Decimals and percent signs")
+                result_df_tmp["Amount"][result_df_tmp["Amount"].str.match("^\.$").fillna(False)] = np.nan
+                result_df_tmp["Amount"][result_df_tmp["Amount"].str.match("^. %$").fillna(False)] = np.nan
+
+                print("Removing Extraneous Prefix Decimal:FFIEC Reports")
+                result_df_tmp["Amount"][result_df_tmp["Amount"].str.match("^\.[0-9].*$").fillna(False)] = result_df_tmp["Amount"][result_df_tmp["Amount"].str.match("^\.[0-9].*$").fillna(False)].str.replace(".","",1)
+                
+                print("Replacing String nan with np.nan")
+                result_df_tmp.replace("nan",np.nan)
+                
+                print("Replacing Number with np.nan in Amount Column")
+                result_df_tmp["Amount"].replace("Number",np.nan)
+                result_df_tmp["IndexInfo"][result_df_tmp["Description"].str.match("Backtesting (over the most recent calendar quarter)").fillna(False)] = "HeaderInfo"
+                result_df_tmp["Amount"][result_df_tmp["Description"].str.match("Backtesting (over the most recent calendar quarter)").fillna(False)] = np.nan
+                
+                print("Post Fix MRRR Number Column Issue")
+                result_df_tmp["ReportCode"][result_df_tmp["Amount"].str.match("MRRR Number").fillna(False)] = "MRRR"
+                result_df_tmp["Description"][result_df_tmp["Amount"].str.match("MRRR Number").fillna(False)] = "Number"
+                result_df_tmp["Amount"][result_df_tmp["Amount"].str.match("MRRR Number").fillna(False)] = np.nan
+               
                 
             result_df[i] = result_df_tmp    
             if breakwhile and i == 0: 
@@ -347,8 +369,11 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
     
     return (result_df)
     
-result_fry15 = report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/unsecured_pdf_complete/", reportfilepath = paths, extension = ".PDF.pdf")
+#result_test = report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/unsecured_pdf_complete/", reportfilepath = paths, extension = ".PDF.pdf")
+#display(result_test.iloc[90:100,:])
 
+
+#result_test
 
 def report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/unsecured_pdf_complete/", reportfilepath = None, extension = ".PDF.pdf"):
     result_df = list()
@@ -442,7 +467,6 @@ def report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/St
         
     return(returnobj)
 
-
     
 
 
@@ -473,7 +497,7 @@ homepath = os.environ['HOME']
 basepath = os.path.join(homepath,'ICDM_Research/Stress_Test_Research/StressTest_Research/')
 sourcefolder = os.path.join(basepath,"unsecured_pdf_complete")
 os.listdir(sourcefolder)
-ReportName_prefix = 'FFIEC102'
+ReportName_prefix = 'FFIEC102_'
 ReportName_suffix = '.PDF.pdf'
 paths = [ os.path.join(sourcefolder,fn) for fn in os.listdir(sourcefolder) if fn.startswith(ReportName_prefix) & fn.endswith(ReportName_suffix)]
 ########
@@ -498,7 +522,7 @@ homepath = os.environ['HOME']
 basepath = os.path.join(homepath,'ICDM_Research/Stress_Test_Research/StressTest_Research/')
 sourcefolder = os.path.join(basepath,"unsecured_pdf_complete")
 os.listdir(sourcefolder)
-ReportName_prefix = 'FRY15_1026632'
+ReportName_prefix = 'FRY15'
 ReportName_suffix = '.PDF.pdf'
 paths = [ os.path.join(sourcefolder,fn) for fn in os.listdir(sourcefolder) if fn.startswith(ReportName_prefix) & fn.endswith(ReportName_suffix)]
 ########
@@ -506,7 +530,7 @@ len(paths)
 
 
 #report = tabula.read_pdf(paths[0], pages = "all", guess = True, multiple_tables = True)
-report[0]
+#report[0]
 del(result_fry15)
 result_fry15 = report_parser_dataframer(reportsourcefolder = "/Users/phn1x/ICDM_Research/Stress_Test_Research/StressTest_Research/unsecured_pdf_complete/", reportfilepath = paths, extension = ".PDF.pdf")
 result_fry15.shape
@@ -518,6 +542,17 @@ result_fry15.shape
 result_fry15.to_csv(os.path.join(basepath,"ParsedFiles/fry15_out.csv"),sep = ",",encoding = "utf-8", index= False)
 
 
+
+
+##
+result_ffiec101.shape
+result_ffiec102.shape
+result_fry15.shape
+
+ffiec_report = pd.concat([result_ffiec101,result_ffiec102,result_fry15])
+ffiec_report.reset_index(inplace=True,drop = True)
+
+ffiec_report.to_csv(os.path.join(basepath,"ParsedFiles/ffiec_result.csv"),sep = ",",encoding = "utf-8", index= False)
 
 
 
