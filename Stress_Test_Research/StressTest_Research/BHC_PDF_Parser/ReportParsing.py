@@ -340,6 +340,7 @@ def report_column_alignmentstruct(tabulaList_df = None, ReportType = "FFIEC101",
                 
                 print("Replacing Number with np.nan in Amount Column")
                 result_df_tmp["Amount"].replace("Number",np.nan)
+                #TODOL: Check below if working 
                 result_df_tmp["IndexInfo"][result_df_tmp["Description"].str.match("Backtesting (over the most recent calendar quarter)").fillna(False)] = "HeaderInfo"
                 result_df_tmp["Amount"][result_df_tmp["Description"].str.match("Backtesting (over the most recent calendar quarter)").fillna(False)] = np.nan
                 
@@ -553,6 +554,19 @@ ffiec_report = pd.concat([result_ffiec101,result_ffiec102,result_fry15])
 ffiec_report.reset_index(inplace=True,drop = True)
 
 ffiec_report.to_csv(os.path.join(basepath,"ParsedFiles/ffiec_result.csv"),sep = ",",encoding = "utf-8", index= False)
+
+
+#ffiec_report = ffiec_report.replace("nan",np.nan)
+
+ffiec_report["ReportCode"] = ffiec_report["ReportCode"].replace("nan",np.nan)
+
+len(ffiec_report["ReportCode"].unique())
+
+ffiec_report[ffiec_report["ReportCode"].str.match("S333").fillna(False)]
+
+
+
+#TODO:  Report Code , Amounts are the same across dates and companies.
 
 
 
